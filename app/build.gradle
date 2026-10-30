@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.yash.blindslock'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.yash.blindslock'
+        minSdk 28          // Android 9 Pie
+        targetSdk 35
+        versionCode 6
+        versionName '1.5'
+    }
+
+    signingConfigs {
+        release {
+            def p = new Properties()
+            def f = rootProject.file('keystore/keystore.properties')
+            if (f.exists()) {
+                f.withInputStream { p.load(it) }
+                storeFile rootProject.file('keystore/' + p['storeFile'])
+                storePassword p['storePassword']
+                keyAlias p['keyAlias']
+                keyPassword p['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            // Signed only when keystore/keystore.properties is present (it is not in git).
+            if (rootProject.file('keystore/keystore.properties').exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            all {
+                systemProperty 'robolectric.graphicsMode', 'NATIVE'
+                systemProperty 'frames.out', rootProject.file('build/frames').absolutePath
+                maxHeapSize = '3g'
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}
