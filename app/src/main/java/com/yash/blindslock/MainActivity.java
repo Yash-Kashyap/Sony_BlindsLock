@@ -233,6 +233,8 @@ public class MainActivity extends Activity {
         slider(c4, getString(R.string.unlock_distance), 15, 45, prefs.unlockPct(), " %", prefs::setUnlockPct);
         c4.addView(sw(getString(R.string.show_clock), prefs.showClock(), prefs::setShowClock), matchWrap(dp(8)));
         c4.addView(sw(getString(R.string.sounds), prefs.sounds(), prefs::setSounds), matchWrap(dp(8)));
+        slider(c4, getString(R.string.sound_volume), 0, 100, prefs.soundVolume(), " %", prefs::setSoundVolume,
+                () -> Sounds.preview(this));
         c4.addView(sw(getString(R.string.haptics), prefs.haptics(), prefs::setHaptics), matchWrap(dp(12)));
         c4.addView(small(getString(R.string.haptics_hint)));
 
@@ -269,6 +271,11 @@ public class MainActivity extends Activity {
     }
 
     private void slider(LinearLayout parent, String label, int min, int max, int value, String unit, IntSink sink) {
+        slider(parent, label, min, max, value, unit, sink, null);
+    }
+
+    private void slider(LinearLayout parent, String label, int min, int max, int value, String unit, IntSink sink,
+                        Runnable onRelease) {
         TextView t = text(getString(R.string.slider_value, label, value, unit), 15, TEXT);
         t.setPadding(0, dp(8), 0, 0);
         parent.addView(t);
@@ -281,7 +288,9 @@ public class MainActivity extends Activity {
                 sink.set(p + min);
             }
             @Override public void onStartTrackingTouch(SeekBar s) {}
-            @Override public void onStopTrackingTouch(SeekBar s) {}
+            @Override public void onStopTrackingTouch(SeekBar s) {
+                if (onRelease != null) onRelease.run();
+            }
         });
         parent.addView(sb, matchWrap(dp(4)));
     }

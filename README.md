@@ -3,7 +3,11 @@
 Brings back the Sony Xperia Z / Z1 "venetian blinds" unlock to Android 9 – 15+.
 No root, no accessibility service, no internet permission.
 
-## What's new in 1.6
+## What's new in 1.7
+
+- Sound volume slider for the lock/unlock clicks (plays a preview when you let go).
+
+## 1.6
 
 - Lock and unlock sounds: a click when the screen turns off, and another when the phone unlocks
   (after the PIN when you use one). They only play when the ringer is on, and can be turned off

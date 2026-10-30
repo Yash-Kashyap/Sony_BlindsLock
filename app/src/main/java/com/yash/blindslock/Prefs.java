@@ -15,6 +15,7 @@ public final class Prefs {
     public static final String KEY_SHOW_CLOCK = "show_clock";
     public static final String KEY_HAPTICS = "haptics";
     public static final String KEY_SOUNDS = "sounds";
+    public static final String KEY_SOUND_VOL = "sound_volume";
     public static final String KEY_CUSTOM_WALLPAPER = "custom_wallpaper";
     public static final String KEY_WALLPAPER_SOURCE = "wallpaper_source";
     public static final String KEY_BAND_SLATS = "band_slats";
@@ -50,6 +51,10 @@ public final class Prefs {
 
     public boolean sounds() { return sp.getBoolean(KEY_SOUNDS, true); }
     public void setSounds(boolean v) { sp.edit().putBoolean(KEY_SOUNDS, v).apply(); }
+
+    /** Lock/unlock sound volume, 0..100 (relative to the phone's system-sounds volume). */
+    public int soundVolume() { return sp.getInt(KEY_SOUND_VOL, 80); }
+    public void setSoundVolume(int v) { sp.edit().putInt(KEY_SOUND_VOL, Math.max(0, Math.min(100, v))).apply(); }
 
     public boolean haptics() { return sp.getBoolean(KEY_HAPTICS, true); }
     public void setHaptics(boolean v) { sp.edit().putBoolean(KEY_HAPTICS, v).apply(); }

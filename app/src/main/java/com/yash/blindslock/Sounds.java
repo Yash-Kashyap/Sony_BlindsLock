@@ -51,6 +51,17 @@ public final class Sounds {
         if (allowed(c)) play(c, false);
     }
 
+    /** Slider 0..100 mapped on a gentle curve, so the low end is usable. */
+    static float volume(Context c) {
+        float x = new Prefs(c).soundVolume() / 100f;
+        return x * x;
+    }
+
+    /** Preview from the settings slider: plays the unlock click at the chosen volume. */
+    public static void preview(Context c) {
+        play(c, false);
+    }
+
     private static boolean allowed(Context c) {
         if (!new Prefs(c).sounds()) return false;
         AudioManager am = c.getSystemService(AudioManager.class);
@@ -60,7 +71,9 @@ public final class Sounds {
     private static synchronized void play(Context c, boolean lock) {
         init(c);
         try {
-            pool.play(lock ? lockId : unlockId, 1f, 1f, 1, 0, 1f);
+            float v = volume(c);
+            if (v <= 0f) return;
+            pool.play(lock ? lockId : unlockId, v, v, 1, 0, 1f);
         } catch (Exception ignored) {
         }
     }
