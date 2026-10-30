@@ -10,8 +10,8 @@ android {
         applicationId 'com.yash.blindslock'
         minSdk 28          // Android 9 Pie
         targetSdk 35
-        versionCode 8
-        versionName '1.7'
+        versionCode 9
+        versionName '1.8'
     }
 
     signingConfigs {

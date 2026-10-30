@@ -12,19 +12,23 @@ import android.os.PowerManager;
  */
 public final class Sounds {
     private static SoundPool pool;
-    private static int lockId, unlockId;
+    private static int lockId, unlockId, warmId;
+    private static long lastWarm = -10_000;
 
     private Sounds() {}
 
     /** For tests. */
     static SoundPool poolForTest() { return pool; }
 
-    /** Loads both sounds (fast, ~5 KB each). Safe to call repeatedly. */
+    /** For tests. */
+    static void resetWarmForTest() { lastWarm = -10_000; }
+
+    /** Loads the sounds (uncompressed, trimmed to start on the click). Safe to call repeatedly. */
     public static synchronized void init(Context c) {
         if (pool != null) return;
         Context app = c.getApplicationContext();
         pool = new SoundPool.Builder()
-                .setMaxStreams(2)
+                .setMaxStreams(3)
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -32,6 +36,7 @@ public final class Sounds {
                 .build();
         lockId = pool.load(app, R.raw.lock, 1);
         unlockId = pool.load(app, R.raw.unlock, 1);
+        warmId = pool.load(app, R.raw.warm, 1);
     }
 
     public static void playLock(Context c) {
@@ -49,6 +54,23 @@ public final class Sounds {
 
     public static void playUnlock(Context c) {
         if (allowed(c)) play(c, false);
+    }
+
+    /**
+     * Wakes the phone's audio output a moment before a click is due (it sleeps when idle, and
+     * waking it is what makes a click arrive late). Plays a short silent clip; cheap, and
+     * rate-limited so dragging a finger doesn't repeat it.
+     */
+    public static synchronized void warm(Context c) {
+        if (!allowed(c)) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastWarm < 1500) return;
+        lastWarm = now;
+        init(c);
+        try {
+            pool.play(warmId, 1f, 1f, 0, 0, 1f);
+        } catch (Exception ignored) {
+        }
     }
 
     /** Slider 0..100 mapped on a gentle curve, so the low end is usable. */

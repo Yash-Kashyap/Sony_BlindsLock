@@ -338,6 +338,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
 
     @Override
     public void onBlindsTouchDown() {
+        Sounds.warm(this);
         if (!stamped) stampCurrentPage();
     }
 
@@ -423,9 +424,11 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
             // Swipe / None / trusted: dismiss directly; fade once the keyguard has gone.
             finishing = true;
             blinds.startReveal(false);
+            // No credential needed, so the unlock is certain: click right on the gesture
+            // instead of waiting for Android's dismiss reply (that reply arrives late).
+            unlockSound();
             km.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
                 @Override public void onDismissSucceeded() {
-                    unlockSound();
                     // Give the system keyguard a moment to leave (Android 9 animates it).
                     handler.postDelayed(blinds::setBackdropClear, 120);
                 }
