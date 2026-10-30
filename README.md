@@ -3,7 +3,13 @@
 Brings back the Sony Xperia Z / Z1 "venetian blinds" unlock to Android 9 – 15+.
 No root, no accessibility service, no internet permission.
 
-## What's new in 1.5
+## What's new in 1.6
+
+- Lock and unlock sounds: a click when the screen turns off, and another when the phone unlocks
+  (after the PIN when you use one). They only play when the ringer is on, and can be turned off
+  in settings.
+
+## 1.5
 
 - **Lock screen widgets**, Xperia-style: swipe left/right on the clock to flip between pages
   (clock, your widgets, "+"). Any home-screen widget works: music, weather, calendar, notes…
@@ -61,13 +67,9 @@ lock-screen apps have always done:
    the blinds open straight onto your home screen. With a PIN, pattern or password, the system
    asks for it first and the blinds open afterwards. **Your phone stays exactly as secure as before.**
 
-## Download
-
-The latest APK is in [`release/`](release/): **BlindsLock-v1.5.apk** (Android 9+).
-
 ## Install & set up
 
-1. Copy the APK to the phone and open it. Allow "Install unknown apps" for your
+1. Copy `BlindsLock-v1.0.apk` to the phone and open it. Allow "Install unknown apps" for your
    file manager or browser if Android asks.
    - If Play Protect says it doesn't recognise the app, that's normal for any app you build
      yourself. Tap **More details → Install anyway**, or let it scan the app.
@@ -113,10 +115,9 @@ Requirements: JDK 17+ and Android SDK 35.
 ./gradlew testReleaseUnitTest        # renders the effect off-device to build/frames/*.png
 ```
 
-Release builds are signed with a key kept **outside this repository**: put `keystore/keystore.properties` and the
-`.jks` file next to `app/` to sign (see `app/build.gradle`). Without them, use
-`./gradlew assembleDebug`. Updates must be signed with the same key as the installed app, or
-Android will refuse to install them over it.
+`keystore/` contains the signing key for this app. Keep it private and keep a backup.
+Updates must be signed with the same key, or Android will refuse to install them over the
+existing app.
 
 ## Tuning the effect
 

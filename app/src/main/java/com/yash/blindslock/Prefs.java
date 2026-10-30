@@ -14,6 +14,7 @@ public final class Prefs {
     public static final String KEY_UNLOCK_PCT = "unlock_pct";
     public static final String KEY_SHOW_CLOCK = "show_clock";
     public static final String KEY_HAPTICS = "haptics";
+    public static final String KEY_SOUNDS = "sounds";
     public static final String KEY_CUSTOM_WALLPAPER = "custom_wallpaper";
     public static final String KEY_WALLPAPER_SOURCE = "wallpaper_source";
     public static final String KEY_BAND_SLATS = "band_slats";
@@ -46,6 +47,9 @@ public final class Prefs {
 
     public boolean showClock() { return sp.getBoolean(KEY_SHOW_CLOCK, true); }
     public void setShowClock(boolean v) { sp.edit().putBoolean(KEY_SHOW_CLOCK, v).apply(); }
+
+    public boolean sounds() { return sp.getBoolean(KEY_SOUNDS, true); }
+    public void setSounds(boolean v) { sp.edit().putBoolean(KEY_SOUNDS, v).apply(); }
 
     public boolean haptics() { return sp.getBoolean(KEY_HAPTICS, true); }
     public void setHaptics(boolean v) { sp.edit().putBoolean(KEY_HAPTICS, v).apply(); }

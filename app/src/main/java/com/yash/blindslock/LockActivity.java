@@ -43,6 +43,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
     private boolean preview;
     private boolean finishing;
     private boolean handOffPending, handingOff;
+    private boolean unlockSoundPlayed;
     private int bottomInset;
     private Bitmap currentScene;
     private Bitmap stampScene;     // currentScene + the visible widget page, while blinds move
@@ -64,6 +65,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
                 blinds.resetToLocked();
                 onBlindsSettled();
             } else if (Intent.ACTION_USER_PRESENT.equals(intent.getAction()) && handingOff) {
+                unlockSound();
                 finishQuietly(); // unlocked via the system UI
             }
         }
@@ -116,6 +118,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
         hideNavigation(); // after setContentView: the window's decor must exist
         applyPrefs();
         buildPages();
+        Sounds.init(this);
 
         IntentFilter sf = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         sf.addAction(Intent.ACTION_USER_PRESENT);
@@ -130,6 +133,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
         finishing = false;
         handOffPending = false;
         handingOff = false;
+        unlockSoundPlayed = false;
         handler.removeCallbacksAndMessages(null);
         setShowWhenLocked(true);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
@@ -400,6 +404,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
         if (!locked) {
             // Already unlocked (e.g. fingerprint while the screen was off): open straight away.
             finishing = true;
+            unlockSound();
             blinds.startReveal(true);
             return;
         }
@@ -420,6 +425,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
             blinds.startReveal(false);
             km.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
                 @Override public void onDismissSucceeded() {
+                    unlockSound();
                     // Give the system keyguard a moment to leave (Android 9 animates it).
                     handler.postDelayed(blinds::setBackdropClear, 120);
                 }
@@ -456,7 +462,10 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
             return;
         }
         km.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
-            @Override public void onDismissSucceeded() { finishQuietly(); }
+            @Override public void onDismissSucceeded() {
+                unlockSound();
+                finishQuietly();
+            }
             @Override public void onDismissCancelled() { finishQuietly(); }
             @Override public void onDismissError() { finishQuietly(); }
         });
@@ -464,6 +473,13 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
         handler.postDelayed(() -> {
             if (handingOff && !km.isKeyguardLocked()) finishQuietly();
         }, 60_000);
+    }
+
+    /** The unlock click, once per unlock. */
+    private void unlockSound() {
+        if (unlockSoundPlayed) return;
+        unlockSoundPlayed = true;
+        Sounds.playUnlock(this);
     }
 
     private void finishQuietly() {

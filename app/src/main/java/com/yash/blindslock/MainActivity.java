@@ -232,6 +232,7 @@ public class MainActivity extends Activity {
         slider(c4, getString(R.string.band_slats), 2, 12, prefs.bandSlats(), "", prefs::setBandSlats);
         slider(c4, getString(R.string.unlock_distance), 15, 45, prefs.unlockPct(), " %", prefs::setUnlockPct);
         c4.addView(sw(getString(R.string.show_clock), prefs.showClock(), prefs::setShowClock), matchWrap(dp(8)));
+        c4.addView(sw(getString(R.string.sounds), prefs.sounds(), prefs::setSounds), matchWrap(dp(8)));
         c4.addView(sw(getString(R.string.haptics), prefs.haptics(), prefs::setHaptics), matchWrap(dp(12)));
         c4.addView(small(getString(R.string.haptics_hint)));
 

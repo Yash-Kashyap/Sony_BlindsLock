@@ -94,6 +94,7 @@ public class LockService extends Service {
             return;
         }
         warmUp(this);
+        Sounds.init(this);
         try {
             android.app.WallpaperManager.getInstance(this).addOnColorsChangedListener(wallpaperListener,
                     new android.os.Handler(android.os.Looper.getMainLooper()));
@@ -162,6 +163,7 @@ public class LockService extends Service {
     private void showLockScreen() {
         if (!new Prefs(this).enabled()) return;
         if (inCall()) return; // proximity sensor turned the screen off during a call
+        Sounds.playLock(this);
         if (Build.VERSION.SDK_INT >= 29 && !Settings.canDrawOverlays(this)) {
             Log.w(TAG, "Display-over-other-apps not granted; Android will block the launch");
         }
