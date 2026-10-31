@@ -23,8 +23,8 @@ public class SoundsTest {
         c.getSystemService(AudioManager.class).setRingerMode(AudioManager.RINGER_MODE_NORMAL);
         Sounds.playLock(c);
         Sounds.playUnlock(c);
-        assertTrue(shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.lock));
-        assertTrue(shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.unlock));
+        assertTrue(Sounds.playedForTest().contains(R.raw.lock));
+        assertTrue(Sounds.playedForTest().contains(R.raw.unlock));
     }
 
     @Test
@@ -32,13 +32,14 @@ public class SoundsTest {
         Context c = RuntimeEnvironment.getApplication();
         Sounds.init(c);
         shadowOf(Sounds.poolForTest()).clearPlayed();
+        Sounds.playedForTest().clear();
         c.getSystemService(AudioManager.class).setRingerMode(AudioManager.RINGER_MODE_VIBRATE);
         Sounds.playUnlock(c);
-        assertFalse(shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.unlock));
+        assertFalse(Sounds.playedForTest().contains(R.raw.unlock));
         c.getSystemService(AudioManager.class).setRingerMode(AudioManager.RINGER_MODE_NORMAL);
         new Prefs(c).setSounds(false);
         Sounds.playLock(c);
-        assertFalse(shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.lock));
+        assertFalse(Sounds.playedForTest().contains(R.raw.lock));
     }
 
     @Test
@@ -54,8 +55,9 @@ public class SoundsTest {
         c.getSystemService(AudioManager.class).setRingerMode(AudioManager.RINGER_MODE_NORMAL);
         Sounds.init(c);
         shadowOf(Sounds.poolForTest()).clearPlayed();
+        Sounds.playedForTest().clear();
         Sounds.playUnlock(c);
-        assertFalse("0 % plays nothing", shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.unlock));
+        assertFalse("0 % plays nothing", Sounds.playedForTest().contains(R.raw.unlock));
     }
 
     /** The click must start right away: no silence at the head of either file. */
@@ -85,10 +87,29 @@ public class SoundsTest {
         Sounds.init(c);
         Sounds.resetWarmForTest();
         shadowOf(Sounds.poolForTest()).clearPlayed();
+        Sounds.playedForTest().clear();
         Sounds.warm(c);
         assertTrue(shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.warm));
         shadowOf(Sounds.poolForTest()).clearPlayed();
+        Sounds.playedForTest().clear();
         Sounds.warm(c);
         assertFalse("rate-limited", shadowOf(Sounds.poolForTest()).wasResourcePlayed(R.raw.warm));
+    }
+
+    @Test
+    public void resampleKeepsLengthRatio() {
+        short[] in = new short[441];
+        for (int i = 0; i < in.length; i++) in[i] = (short) (i * 10);
+        short[] out = Sounds.resample(in, 44100, 48000);
+        org.junit.Assert.assertEquals(480, out.length);
+        org.junit.Assert.assertEquals(0, out[0]);
+        org.junit.Assert.assertTrue(out[479] > 4300);
+    }
+
+    @Test
+    public void wavClipsDecode() throws Exception {
+        Context c = RuntimeEnvironment.getApplication();
+        org.junit.Assert.assertTrue(Sounds.readWav(c, R.raw.lock).length > 4000);
+        org.junit.Assert.assertTrue(Sounds.readWav(c, R.raw.unlock).length > 4000);
     }
 }

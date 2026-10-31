@@ -8,6 +8,11 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.view.Display;
+import android.os.PowerManager;
+import android.os.Looper;
+import android.os.Handler;
+import android.hardware.display.DisplayManager;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
@@ -50,6 +55,70 @@ public class LockService extends Service {
             }
         }
     };
+
+    /** Sent by CRT Off just before it locks the phone (see its CrtService). */
+    static final String ACTION_CRT_LOCKING = "com.yash.crtoff.action.LOCKING";
+    static final int LOCK_SOUND_TAKEN = 1;
+
+    /** The lock click plays once per screen-off, from whichever signal comes first. */
+    private boolean lockClicked;
+    private final Handler soundHandler = new Handler(Looper.getMainLooper());
+
+    private final BroadcastReceiver crtReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (lockClick() && isOrderedBroadcast()) setResultCode(LOCK_SOUND_TAKEN);
+            // if the screen doesn't actually go off, allow the click again
+            soundHandler.postDelayed(() -> {
+                if (screenIsOn()) lockClicked = false;
+            }, 3000);
+        }
+    };
+
+    /**
+     * Display state changes arrive straight from the display system, well before Android's
+     * "screen off" broadcast has made its way round all the apps, so the click lands with the
+     * screen going dark.
+     */
+    private final DisplayManager.DisplayListener displayListener = new DisplayManager.DisplayListener() {
+        @Override public void onDisplayAdded(int id) { }
+        @Override public void onDisplayRemoved(int id) { }
+        @Override
+        public void onDisplayChanged(int id) {
+            if (id != Display.DEFAULT_DISPLAY) return;
+            Display d = getSystemService(DisplayManager.class).getDisplay(id);
+            if (d == null) return;
+            int st = d.getState();
+            if (st == Display.STATE_ON) {
+                lockClicked = false;
+            } else if (st == Display.STATE_OFF || st == Display.STATE_DOZE
+                    || st == Display.STATE_DOZE_SUSPEND) {
+                lockClick();
+            }
+        }
+    };
+
+    /** Plays the lock click if it hasn't played for this screen-off. True if it played. */
+    private boolean lockClick() {
+        if (lockClicked) return true;
+        Prefs p = new Prefs(this);
+        if (!p.enabled() || !p.sounds() || inCall()) return false;
+        lockClicked = true;
+        Sounds.playLock(this);
+        return true;
+    }
+
+    /** CRT Off is another app, so the receiver is exported (flag required from Android 13). */
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private void registerCrtReceiver(IntentFilter cf) {
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(crtReceiver, cf, Context.RECEIVER_EXPORTED);
+        else registerReceiver(crtReceiver, cf);
+    }
+
+    private boolean screenIsOn() {
+        PowerManager pm = getSystemService(PowerManager.class);
+        return pm == null || pm.isInteractive();
+    }
 
     public static void start(Context c) {
         Intent i = new Intent(c, LockService.class);
@@ -103,6 +172,13 @@ public class LockService extends Service {
         IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         f.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         registerReceiver(screenReceiver, f);
+        IntentFilter cf = new IntentFilter(ACTION_CRT_LOCKING);
+        cf.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
+        registerCrtReceiver(cf);
+        try {
+            getSystemService(DisplayManager.class).registerDisplayListener(displayListener, soundHandler);
+        } catch (Exception ignored) {
+        }
         addKeeperWindow();
     }
 
@@ -122,6 +198,15 @@ public class LockService extends Service {
             unregisterReceiver(screenReceiver);
         } catch (IllegalArgumentException ignored) {
         }
+        try {
+            unregisterReceiver(crtReceiver);
+        } catch (IllegalArgumentException ignored) {
+        }
+        try {
+            getSystemService(DisplayManager.class).unregisterDisplayListener(displayListener);
+        } catch (Exception ignored) {
+        }
+        soundHandler.removeCallbacksAndMessages(null);
         removeKeeperWindow();
         try {
             android.app.WallpaperManager.getInstance(this).removeOnColorsChangedListener(wallpaperListener);
@@ -163,7 +248,7 @@ public class LockService extends Service {
     private void showLockScreen() {
         if (!new Prefs(this).enabled()) return;
         if (inCall()) return; // proximity sensor turned the screen off during a call
-        Sounds.playLock(this);
+        lockClick(); // normally already played by the display listener
         if (Build.VERSION.SDK_INT >= 29 && !Settings.canDrawOverlays(this)) {
             Log.w(TAG, "Display-over-other-apps not granted; Android will block the launch");
         }
