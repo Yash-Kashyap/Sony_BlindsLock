@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
     private static final int REQ_PICK = 10;
     private static final int REQ_NOTIF = 11;
     private static final int REQ_READ = 12;
+    private static final int REQ_CAPTURE = 13;
 
     private static final int BG = 0xFF0E0F14;
     private static final int CARD = 0xFF1A1C24;
@@ -486,6 +487,17 @@ public class MainActivity extends Activity {
     }
 
     private void useCurrentWallpaper() {
+        if (WallpaperSource.isLive(this)) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.use_current)
+                    .setMessage(R.string.live_wp_explain)
+                    .setPositiveButton(R.string.continue_, (d, w) -> startActivityForResult(
+                            getSystemService(android.media.projection.MediaProjectionManager.class)
+                                    .createScreenCaptureIntent(), REQ_CAPTURE))
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+            return;
+        }
         if (!WallpaperSource.canRead(this)) {
             new AlertDialog.Builder(this)
                     .setTitle(R.string.use_current)
@@ -558,6 +570,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CAPTURE) {
+            if (resultCode != RESULT_OK || data == null) return;
+            WallpaperCaptureService.onDone = ok -> ui.post(() -> {
+                WallpaperCaptureService.onDone = null;
+                Toast.makeText(this, ok ? R.string.live_wp_done : R.string.current_wp_failed, Toast.LENGTH_LONG).show();
+                updateThumb();
+                updateSourceLabel();
+            });
+            WallpaperCaptureService.start(this, resultCode, data);
+            startActivity(new Intent(this, WallpaperPeekActivity.class));
+            return;
+        }
         if (requestCode == REQ_BIND) {
             if (resultCode == RESULT_OK) configureOrFinishWidget(); else cancelPendingWidget();
             return;

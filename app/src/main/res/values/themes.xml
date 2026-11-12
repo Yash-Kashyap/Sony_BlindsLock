@@ -22,4 +22,9 @@
         <item name="android:windowDisablePreview">true</item>
         <item name="android:backgroundDimEnabled">false</item>
     </style>
+
+    <!-- Shows only the system (live) wallpaper behind it; used to capture one still frame. -->
+    <style name="PeekTheme" parent="android:Theme.Wallpaper.NoTitleBar.Fullscreen">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

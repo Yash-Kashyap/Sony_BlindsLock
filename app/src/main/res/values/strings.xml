@@ -36,6 +36,9 @@
     <string name="current_wp_failed">Couldn’t read the current wallpaper. Try “Choose image” instead.</string>
     <string name="use_default">Use default (sky &amp; field)</string>
     <string name="wallpaper_hint">“Use current wallpaper” copies your lock-screen wallpaper (or home wallpaper if there isn’t a separate one). Live and video wallpapers can’t be copied.</string>
+    <string name="capture_notif">Capturing wallpaper…</string>
+    <string name="live_wp_explain">Your wallpaper is a live wallpaper. Android can’t hand a live wallpaper to apps, but Blinds Lock can take one still picture of how it looks right now.\n\nAndroid will ask to start recording the screen. Allow it: the app only grabs a single frame of the wallpaper, then stops. Nothing else is recorded.</string>
+    <string name="live_wp_done">Wallpaper captured.</string>
     <string name="saving_wallpaper">Saving wallpaper…</string>
     <string name="wallpaper_failed">Couldn’t load that image</string>
 
@@ -67,6 +70,7 @@
     <string name="tips">Good to know</string>
     <string name="tips_body">• Swipe up or down. The slats under your finger turn and twist toward where you touch. Fast swipes make them flap more.\n• Best experience: set your system screen lock to Swipe or None, or use fingerprint / face unlock — the blinds then open straight onto your home screen.\n• With a PIN or pattern, swipe the blinds and the system asks for it; the blinds open after it is entered.\n• Android does not let normal apps replace the system lock screen itself, so this app shows its own screen above it. The phone stays exactly as secure as before.\n• The app has no internet permission and no accessibility service.</string>
 
+    <string name="notif_channel_launch">Lock screen start</string>
     <string name="notif_channel">Lock screen service</string>
     <string name="notif_title">Blinds lock screen is active</string>
     <string name="notif_text">Tap to change settings</string>

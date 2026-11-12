@@ -31,6 +31,11 @@ public final class WallpaperSource {
 
     public static boolean needsAllFilesAccess() { return Build.VERSION.SDK_INT >= 33; }
 
+    /** True when the wallpaper is a live wallpaper: Android only hands out a stale still for it. */
+    public static boolean isLive(Context c) {
+        return WallpaperManager.getInstance(c).getWallpaperInfo() != null;
+    }
+
     public static boolean canRead(Context c) {
         if (Build.VERSION.SDK_INT >= 33) return Environment.isExternalStorageManager();
         if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) return true;
@@ -40,7 +45,7 @@ public final class WallpaperSource {
 
     /** Reads the current wallpaper and saves it as the app's wallpaper. Call off the UI thread. */
     public static boolean syncNow(Context c) {
-        if (!canRead(c)) return false;
+        if (isLive(c) || !canRead(c)) return false; // never copy the stale still of a live wallpaper
         Bitmap bmp = read(c);
         if (bmp == null) return false;
         Prefs prefs = new Prefs(c);

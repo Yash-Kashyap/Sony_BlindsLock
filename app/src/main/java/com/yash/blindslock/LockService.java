@@ -1,5 +1,6 @@
 package com.yash.blindslock;
 
+import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -10,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.view.Display;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.os.Looper;
 import android.os.Handler;
 import android.hardware.display.DisplayManager;
@@ -35,6 +37,8 @@ public class LockService extends Service {
     private static final String TAG = "BlindsLock";
     private static final String CHANNEL = "blinds_service";
     private static final int NOTIF_ID = 1;
+    private static final String CHANNEL_LAUNCH = "blinds_launch";
+    private static final int LAUNCH_NOTIF_ID = 2;
 
     private View keeperView;
 
@@ -91,6 +95,7 @@ public class LockService extends Service {
             int st = d.getState();
             if (st == Display.STATE_ON) {
                 lockClicked = false;
+                scheduleHealthCheck();
             } else if (st == Display.STATE_OFF || st == Display.STATE_DOZE
                     || st == Display.STATE_DOZE_SUSPEND) {
                 lockClick();
@@ -249,6 +254,34 @@ public class LockService extends Service {
         if (!new Prefs(this).enabled()) return;
         if (inCall()) return; // proximity sensor turned the screen off during a call
         lockClick(); // normally already played by the display listener
+        // Always start a fresh lock screen: re-using the old (stopped) one can leave it resumed
+        // but never redrawn after wake (Android skips the draw and never retries).
+        if (LockActivity.discardRunning()) {
+            soundHandler.postDelayed(this::launchLockScreen, 250);
+        } else {
+            launchLockScreen();
+        }
+    }
+
+    /**
+     * A moment after the screen turns on, make sure the lock screen really draws. If a very quick
+     * lock-and-wake left it frozen (resumed but never redrawn), throw it away and start a new one.
+     */
+    private void scheduleHealthCheck() {
+        final long wake = SystemClock.uptimeMillis() - 400; // a draw just before this event is fine
+        soundHandler.postDelayed(() -> {
+            if (!new Prefs(this).enabled() || !screenIsOn() || inCall()) return;
+            KeyguardManager km = getSystemService(KeyguardManager.class);
+            if (km == null || !km.isKeyguardLocked()) return;
+            if (LockActivity.isFrozenSince(wake)) {
+                Log.w(TAG, "Lock screen frozen after wake; recreating it");
+                LockActivity.discardRunning();
+                soundHandler.postDelayed(this::launchLockScreen, 300);
+            }
+        }, 1200);
+    }
+
+    private void launchLockScreen() {
         if (Build.VERSION.SDK_INT >= 29 && !Settings.canDrawOverlays(this)) {
             Log.w(TAG, "Display-over-other-apps not granted; Android will block the launch");
         }
@@ -256,10 +289,46 @@ public class LockService extends Service {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                         | Intent.FLAG_ACTIVITY_NO_ANIMATION
                         | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        final long asked = SystemClock.uptimeMillis();
         try {
             startActivity(i);
         } catch (Exception e) {
             Log.e(TAG, "Could not show lock screen", e);
+        }
+        // After Home/Back/Recents Android blocks background activity starts for ~5 s ("Activity
+        // start request ... stopped") and queues ours, so Sony's lock screen would show meanwhile.
+        // SystemUI is exempt: if our start didn't go through, ask it to launch us with a
+        // full-screen-intent notification (what alarms and calls use), then remove the notification.
+        soundHandler.postDelayed(() -> {
+            if (LockActivity.lastCreateUptime >= asked || !new Prefs(this).enabled()) return;
+            launchViaSystemUi(i);
+        }, 350);
+    }
+
+    private void launchViaSystemUi(Intent launch) {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            NotificationChannel ch = new NotificationChannel(CHANNEL_LAUNCH,
+                    getString(R.string.notif_channel_launch), NotificationManager.IMPORTANCE_HIGH);
+            ch.setSound(null, null);
+            ch.enableVibration(false);
+            ch.setShowBadge(false);
+            ch.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
+            nm.createNotificationChannel(ch);
+            PendingIntent pi = PendingIntent.getActivity(this, 1, launch,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            Notification n = new Notification.Builder(this, CHANNEL_LAUNCH)
+                    .setSmallIcon(R.drawable.ic_notif)
+                    .setContentTitle(getString(R.string.notif_title))
+                    .setCategory(Notification.CATEGORY_ALARM)
+                    .setVisibility(Notification.VISIBILITY_SECRET)
+                    .setFullScreenIntent(pi, true)
+                    .setAutoCancel(true)
+                    .build();
+            nm.notify(LAUNCH_NOTIF_ID, n);
+            soundHandler.postDelayed(() -> nm.cancel(LAUNCH_NOTIF_ID), 2500);
+        } catch (Exception e) {
+            Log.w(TAG, "Full-screen launch failed", e);
         }
     }
 

@@ -41,6 +41,30 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
     private BlindsView blinds;
     private Haptics haptics;
     private boolean preview;
+
+    /** The running lock screen, so {@link LockService} can tell whether it needs to start one. */
+    private static LockActivity current;
+    /** Uptime of the last onCreate; lets the service tell whether its launch request went through. */
+    static volatile long lastCreateUptime;
+
+    /**
+     * True when the lock screen has window focus but has not drawn since {@code sinceUptime}.
+     * After a very quick lock-and-wake Android can leave it resumed yet never redrawn, so it
+     * ignores touches; the service then recreates it.
+     */
+    static boolean isFrozenSince(long sinceUptime) {
+        LockActivity a = current;
+        return a != null && !a.isFinishing() && !a.finishing && !a.handingOff && !a.preview
+                && a.hasWindowFocus() && BlindsView.lastDrawUptime < sinceUptime;
+    }
+
+    /** Throws away a running lock screen that is mid-unlock, so a fresh one can be started. */
+    static boolean discardRunning() {
+        LockActivity a = current;
+        if (a == null) return false;
+        a.finishAndRemoveTask();
+        return true;
+    }
     private boolean finishing;
     private boolean handOffPending, handingOff;
     private boolean unlockSoundPlayed;
@@ -74,6 +98,8 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        current = this;
+        lastCreateUptime = android.os.SystemClock.uptimeMillis();
         preview = getIntent().getBooleanExtra(EXTRA_PREVIEW, false);
         setShowWhenLocked(true);
 
@@ -127,6 +153,9 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
 
     @Override
     protected void onNewIntent(Intent intent) {
+        // A launch request that Android queued earlier (see LockService) can arrive late, after
+        // this screen was already started another way; don't reset a screen in use.
+        if (!finishing && !handingOff && android.os.SystemClock.uptimeMillis() - lastCreateUptime < 8000) return;
         super.onNewIntent(intent);
         setIntent(intent);
         preview = intent.getBooleanExtra(EXTRA_PREVIEW, false);
@@ -163,6 +192,10 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
         applyPrefs();
         buildPages();
         rebuildScene();
+        // On wake Android can skip the first draw (it still counts the display as off) and never
+        // retry, leaving a stale picture; draw again once the display is really on.
+        blinds.postDelayed(blinds::invalidate, 150);
+        blinds.postDelayed(blinds::invalidate, 500);
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_TIME_TICK);
         f.addAction(Intent.ACTION_TIME_CHANGED);
@@ -500,6 +533,7 @@ public class LockActivity extends Activity implements BlindsView.Listener, Widge
 
     @Override
     protected void onDestroy() {
+        if (current == this) current = null;
         handler.removeCallbacksAndMessages(null);
         try { unregisterReceiver(screenReceiver); } catch (IllegalArgumentException ignored) { }
         super.onDestroy();

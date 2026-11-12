@@ -9,3 +9,9 @@ local.properties
 keystore/
 *.jks
 *.keystore
+
+# Local notes and crash logs
+PROJECT_MASTER.md
+memory.md
+hs_err_pid*.log
+replay_pid*.log
